@@ -1,6 +1,10 @@
 // Prevent console spawn on start on Windwos
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod obj;
+
+use obj::*;
+
 use std::{
     io::Write,
     mem::{size_of, size_of_val},
@@ -11,17 +15,6 @@ use {
     gl::load_with,
     glfw::{Action, Context, Key, Modifiers, SwapInterval},
 };
-
-type Vertex = [f32; 3];
-const VERTICES: [Vertex; 4] = [
-    [-0.5, 0.0, 0.0],
-    [0.5, 0.0, 0.0],
-    [0.0, 0.5, 0.0],
-    [0.0, -0.5, 0.0],
-];
-
-type Triangle = [usize; 3];
-const TRIANGLES: [Triangle; 2] = [[0, 1, 2], [0, 1, 3]];
 
 fn main() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
@@ -38,12 +31,8 @@ fn main() {
     // Load every OpenGL function
     load_with(|f_name| window.get_proc_address(f_name));
 
-    let mut vertices = Vec::new();
-    for triangle in TRIANGLES.iter() {
-        for vertex in triangle.iter() {
-            vertices.push(VERTICES[*vertex]);
-        }
-    }
+    let object = obj::Object::load("objects/sphere.obj").unwrap();
+    let (vertices, normals) = (object.vertices(), object.normals());
 
     // Set clear (background) color
     unsafe {
@@ -69,30 +58,50 @@ fn main() {
         // Pass data to it
         gl::BufferData(
             gl::ARRAY_BUFFER,
-            (vertices.len() * size_of_val(&VERTICES[0])) as isize,
+            (vertices.len() * size_of_val(&vertices[0])) as isize,
             vertices.as_ptr().cast(),
             gl::STATIC_DRAW,
         );
     }
 
-    // Enable vertex attribute
+    // Enable vertex attribute: positions
     unsafe {
         gl::VertexAttribPointer(
             // Index
             0,
             // Component count
-            VERTICES[0].len() as i32,
+            vertices[0].len() as i32,
             // Component type
             gl::FLOAT,
             // Normalized?
             gl::FALSE,
             // Stride (could also be 0 here)
-            size_of::<Vertex>().try_into().unwrap(),
+            size_of::<Coords>().try_into().unwrap(),
             // Pointer in VBO
             0 as *const _,
         );
 
         gl::EnableVertexAttribArray(0);
+    }
+
+    // Enable vertex attribute: normals
+    unsafe {
+        gl::VertexAttribPointer(
+            // Index
+            1,
+            // Component count
+            normals[0].len() as i32,
+            // Component type
+            gl::FLOAT,
+            // Normalized?
+            gl::FALSE,
+            // Stride (could also be 0 here)
+            size_of::<Coords>().try_into().unwrap(),
+            // Pointer in VBO
+            0 as *const _,
+        );
+
+        gl::EnableVertexAttribArray(1);
     }
 
     let vertex = setup_vertex_shader();
