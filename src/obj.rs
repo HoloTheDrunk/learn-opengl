@@ -3,8 +3,8 @@ use std::str::SplitWhitespace;
 pub type Coords = [f32; 3];
 
 #[derive(Clone, Debug, Default)]
-struct Object {
-    name: String,
+pub struct Object {
+    pub name: String,
     vertices: Vec<Coords>,
     normals: Vec<Coords>,
     faces: Vec<(usize, Option<usize>, Option<usize>)>,
@@ -43,8 +43,8 @@ impl Object {
                         v => panic!("Unhandled smooth shading setting `{v}`"),
                     }
                 ),
-                "v" => object.push_coords(line, tokens),
-                "vn" => object.push_coords(line, tokens),
+                "v" => object.push_vertex(line, tokens),
+                "vn" => object.push_normal(line, tokens),
                 "f" => object.push_face(line, tokens),
                 _ => panic!("Unhandled marker {marker}"),
             }
@@ -71,20 +71,14 @@ impl Object {
             .collect()
     }
 
-    fn push_coords(&mut self, line: usize, tokens: SplitWhitespace) {
-        let coords = tokens
-            .map(|token| {
-                token
-                    .parse::<f32>()
-                    .expect(format!("Failed to parse coords, should be an f32: {token}").as_str())
-            })
-            .collect::<Vec<_>>();
-
-        if !(3..4).contains(&coords.len()) {
-            panic!("Invalid coordinate count at line {line}");
-        }
-
+    fn push_vertex(&mut self, line: usize, tokens: SplitWhitespace) {
+        let coords = parse_coords(tokens, Some(line));
         self.vertices.push([coords[0], coords[1], coords[2]]);
+    }
+
+    fn push_normal(&mut self, line: usize, tokens: SplitWhitespace) {
+        let coords = parse_coords(tokens, Some(line));
+        self.normals.push([coords[0], coords[1], coords[2]]);
     }
 
     fn push_face(&mut self, line: usize, tokens: SplitWhitespace) {
@@ -117,6 +111,26 @@ impl Object {
 
         self.faces.extend(indices.iter());
     }
+}
+
+fn parse_coords(tokens: SplitWhitespace, line: Option<usize>) -> Vec<f32> {
+    let coords = tokens
+        .map(|token| {
+            token
+                .parse::<f32>()
+                .expect(format!("Failed to parse coords, should be an f32: {token}").as_str())
+        })
+        .collect::<Vec<_>>();
+
+    if !(3..4).contains(&coords.len()) {
+        panic!(
+            "Invalid coordinate count at line {}",
+            line.map(|line| line.to_string())
+                .unwrap_or("Unknown".to_owned())
+        );
+    }
+
+    coords
 }
 
 fn parse_indices(string: &str) -> Vec<Option<usize>> {
