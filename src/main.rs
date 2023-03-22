@@ -136,12 +136,10 @@ fn main() {
         // Poll for and process events
         glfw.poll_events();
         for (_, event) in glfw::flush_messages(&events) {
-            if let ControlFlow::Break(_) = echo_events(event, &mut window) {
-                continue;
-            }
-
-            std::io::stdout().flush().unwrap();
+            echo_events(event, &mut window);
         }
+
+        std::io::stdout().flush().unwrap();
     }
 
     println!("");
@@ -221,7 +219,7 @@ fn check_shader_error(shader: u32, shader_type: &str) {
 fn check_program_error(program: u32) {
     unsafe {
         let mut success = 0;
-        gl::GetShaderiv(program, gl::LINK_STATUS, &mut success);
+        gl::GetProgramiv(program, gl::LINK_STATUS, &mut success);
 
         if success == 0 {
             let mut log_length = 0;
@@ -238,15 +236,15 @@ fn check_program_error(program: u32) {
 
             vec.set_len(returned_log_length.try_into().unwrap());
 
-            // panic!(
-            //     "Program link error: {} ({vec:?})",
-            //     String::from_utf8_lossy(&vec)
-            // )
+            panic!(
+                "Program link error: {} ({vec:?})",
+                String::from_utf8_lossy(&vec)
+            )
         }
     }
 }
 
-fn echo_events(event: glfw::WindowEvent, window: &mut glfw::Window) -> ControlFlow<()> {
+fn echo_events(event: glfw::WindowEvent, window: &mut glfw::Window) {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
         glfw::WindowEvent::Key(key, _, Action::Press, modifiers)
@@ -268,7 +266,7 @@ fn echo_events(event: glfw::WindowEvent, window: &mut glfw::Window) -> ControlFl
                 Key::Period => ".",
                 Key::Apostrophe => "'",
                 Key::Backspace => "\x1b[1D \x1b[1D",
-                _ => return ControlFlow::Break(()),
+                _ => return,
             };
             print!(
                 "{}",
@@ -281,6 +279,4 @@ fn echo_events(event: glfw::WindowEvent, window: &mut glfw::Window) -> ControlFl
         }
         _ => {}
     }
-
-    ControlFlow::Continue(())
 }
